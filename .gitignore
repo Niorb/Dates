@@ -1,2 +1,5 @@
 plan
-.vscode
+./.vscode
+./.gitignore
+rightlist
+secondRightList
