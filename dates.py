@@ -1,5 +1,6 @@
 # usr/bin/env python3
 
+import bs4
 from bs4 import BeautifulSoup
 import requests
 import random
@@ -30,9 +31,9 @@ secondRightList = []
 blank = False
 
 if args.reset:
-    with open("./rightList", 'w+') as file:
+    with open("./lists/rightList", 'w+') as file:
         file.write("")
-    with open("./secondRightList", 'w+') as file:
+    with open("./lists/secondRightList", 'w+') as file:
         file.write("")
 if args.blank:
     blank = True
@@ -86,145 +87,169 @@ else:
 finalArray = []
 counter = 0
 secondCounter = 0
-elements = soup.find_all("h4")
+title = ""
+element = soup.find("h4")
 periods = []
-# Some useless information in that elements list (promotional titles, random information,...)
-elements = elements[:-8]
-for element in elements:
-    ul = element.find_next("ul")
-    dates = ul.find_all("li")
-    periods.append(element.text[:-1].strip())
-    for date in dates:
-        date = date.text
-        columnIndex = date.find(":")
-        el = {
-            'period': element.text[:-1].strip(),
-            "date": date[:columnIndex-1].strip(),
-            "event": date[columnIndex+2:].replace("\r", "").replace("\n", "").strip()
-        }
-        finalArray.append(el)
+events = []
+# Setup events array and periods array
 while True:
-    if not blank:
-        print(counter)
-        print("Right: ", len(rightList), "Confirmed: ", len(secondRightList),
-              "Total: ", len(rightList)+len(secondRightList), "/")
-        if (secondCounter == 5 and counter == 3 and len(secondRightList) != 0):
-            secondCounter = 0
-            counter = 0
-            question = random.randint(0, len(secondRightList)-1)
-            el = secondRightList[question]
-            print("Capitale de :", Fore.YELLOW +
-                  el["country"]+Style.RESET_ALL)
-            answer = input()
-            if(answer == el["capital"].strip()):
-                print("Right answer ! the continent is: " +
-                      Fore.CYAN + el["continent"]+Style.RESET_ALL)
-                print("Memo:" + Fore.RED +
-                      el["memo"]+"\n"+Style.RESET_ALL)
-                secondRightList.pop(question)
-                continue
-            else:
-                print("\nFalse, the answer is: "+Fore.GREEN,
-                      el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
-                string = str(el["country"]+"%"+el["capital"]+"%" +
-                             el["memo"]+"%"+el["continent"]+"%\n")
-                print("Memo: ", Fore.RED +
-                      el["memo"], "\n", Style.RESET_ALL)
-                with open("./secondRightList", 'r') as secondRightFile:
-                    lines = secondRightFile.readlines()
-                with open("./secondRightList", 'w') as secondRightFile:
-                    for line in lines:
-                        if line != string:
-                            secondRightFile.write(line)
-                with open("./rightList", 'a') as rightFile:
-                    rightFile.write(string)
-                secondRightList.pop(question)
-                rightList.append(el)
-                continue
+    if isinstance(element, bs4.element.Tag):
+        if element.name == 'h4':
+            title = element.text[:-1].strip()
+            periods.append(title)
+        elif element.name == 'ul':
+            for event in element.find_all("li"):
+                event = event.text
+                columnIndex = event.find(":")
+                el = {
+                    "period": title,
+                    "date": event[:columnIndex-1].strip(),
+                    "event": event[columnIndex+2:].replace("\r", "").replace("\n", "").strip()
+                }
+                events.append(el)
+    try:
+        element = element.nextSibling
+    except AttributeError:
+        break
 
-        elif counter == 3 and len(rightList) != 0:
-            counter = 0
-            secondCounter = secondCounter+1
-            question = random.randint(0, len(rightList)-1)
-            el = rightList[question]
-            print("Capitale de :", Fore.YELLOW +
-                  el["country"]+Style.RESET_ALL)
-            answer = input()
-            if(answer == el["capital"].strip()):
-                print("Right answer ! the continent is: " +
-                      Fore.CYAN + el["continent"]+Style.RESET_ALL)
-                print("Memo:" + Fore.RED +
-                      el["memo"]+"\n"+Style.RESET_ALL)
-                string = str(el["country"]+"%"+el["capital"]+"%" +
-                             el["memo"]+"%"+el["continent"]+"%\n")
-                with open("./secondRightList", 'a') as file:
-                    secondRightList.append(el)
-                    file.write(string)
-                with open("./rightList", 'r') as rightfile:
-                    lines = rightfile.readlines()
-                with open("./rightList", 'w') as rightFile:
-                    for line in lines:
-                        if line != string:
-                            rightFile.write(line)
-                rightList.pop(question)
-                continue
-            else:
-                print("\nFalse, the answer is: "+Fore.GREEN,
-                      el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
-                print("Memo: ", Fore.RED +
-                      el["memo"], "\n", Style.RESET_ALL)
-                with open("./rightList", 'r') as rightfile:
-                    lines = rightfile.readlines()
-                with open("./rightList", 'w') as rightFile:
-                    string = str(el["country"]+"%"+el["capital"]+"%" +
-                                 el["memo"]+"%"+el["continent"]+"%\n")
-                    for line in lines:
-                        if line != string:
-                            rightFile.write(line)
-                rightList.pop(question)
-                finalArray.append(el)
-                continue
+
+# Start asking questions
+while True:
+    counter += 1
+    if counter != 3:
+        question = random.randint(0, len(events)-1)
+        event = events[question]
+        print("Thème: "+Fore.CYAN+event['period'], Style.RESET_ALL)
+        print('Evènement: '+Fore.YELLOW+event['event'], Style.RESET_ALL)
+        givenDate = input("Date: ")
+        if givenDate == event['date']:
+            print(Fore.GREEN+"Correcte !")
         else:
-            question = random.randint(0, len(finalArray)-1)
-            el = finalArray[question]
-            print("Capitale de :", Fore.YELLOW +
-                  el["country"]+Style.RESET_ALL)
-            answer = input()
-            if(answer == el["capital"].strip()):
-                counter = counter+1
-                print("Right answer ! the continent is: " +
-                      Fore.CYAN + el["continent"]+Style.RESET_ALL)
-                print("Memo:" + Fore.RED +
-                      el["memo"]+"\n"+Style.RESET_ALL)
-                with open("./rightList", "a") as file:
-                    string = str(el["country"]+"%"+el["capital"]+"%" +
-                                 el["memo"]+"%"+el["continent"]+"%\n")
-                    rightList.append(el)
-                    file.write(string)
-                finalArray.pop(question)
-                continue
-            else:
-                print("\nFalse, the answer is: "+Fore.GREEN,
-                      el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
-                print("Memo: ", Fore.RED +
-                      el["memo"], "\n", Style.RESET_ALL)
-                continue
-    else:
-        question = random.randint(0, len(finalArray)-1)
-        el = finalArray[question]
-        print("Capitale de :", Fore.YELLOW +
-              el["country"]+Style.RESET_ALL)
-        answer = input()
-        if(answer == el["capital"].strip()):
-            print(len(finalArray)+"/199")
-            counter = counter+1
-            print("Right answer ! the continent is: " +
-                  Fore.CYAN + el["continent"]+Style.RESET_ALL)
-            print("Memo:" + Fore.RED+el["memo"]+"\n"+Style.RESET_ALL)
-            finalArray.pop(question)
-            continue
-        else:
-            print("\nFalse, the answer is: "+Fore.GREEN,
-                  el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
-            print("Memo: ", Fore.RED+el["memo"], "\n", Style.RESET_ALL)
-            continue
+            print(Fore.RED+'Incorrecte'+Style.RESET_ALL +
+                  ', cela a eu lieu en', Fore.BLUE, event['date'])
+        print(Style.RESET_ALL)
+    # while True:
+    #     if not blank:
+    #         print(counter)
+    #         print("Right: ", len(rightList), "Confirmed: ", len(secondRightList),
+    #               "Total: ", len(rightList)+len(secondRightList), "/204")
+    #         if (secondCounter == 5 and counter == 3 and len(secondRightList) != 0):
+    #             secondCounter = 0
+    #             counter = 0
+    #             question = random.randint(0, len(secondRightList)-1)
+    #             el = secondRightList[question]
+    #             print("Capitale de :", Fore.YELLOW +
+    #                   el["country"]+Style.RESET_ALL)
+    #             answer = input()
+    #             if(answer == el["capital"].strip()):
+    #                 print("Right answer ! the continent is: " +
+    #                       Fore.CYAN + el["continent"]+Style.RESET_ALL)
+    #                 print("Memo:" + Fore.RED +
+    #                       el["memo"]+"\n"+Style.RESET_ALL)
+    #                 secondRightList.pop(question)
+    #                 continue
+    #             else:
+    #                 print("\nFalse, the answer is: "+Fore.GREEN,
+    #                       el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
+    #                 string = str(el["country"]+"%"+el["capital"]+"%" +
+    #                              el["memo"]+"%"+el["continent"]+"%\n")
+    #                 print("Memo: ", Fore.RED +
+    #                       el["memo"], "\n", Style.RESET_ALL)
+    #                 with open("./secondRightList", 'r') as secondRightFile:
+    #                     lines = secondRightFile.readlines()
+    #                 with open("./secondRightList", 'w') as secondRightFile:
+    #                     for line in lines:
+    #                         if line != string:
+    #                             secondRightFile.write(line)
+    #                 with open("./rightList", 'a') as rightFile:
+    #                     rightFile.write(string)
+    #                 secondRightList.pop(question)
+    #                 rightList.append(el)
+    #                 continue
+
+    #         elif counter == 3 and len(rightList) != 0:
+    #             counter = 0
+    #             secondCounter = secondCounter+1
+    #             question = random.randint(0, len(rightList)-1)
+    #             el = rightList[question]
+    #             print("Capitale de :", Fore.YELLOW +
+    #                   el["country"]+Style.RESET_ALL)
+    #             answer = input()
+    #             if(answer == el["capital"].strip()):
+    #                 print("Right answer ! the continent is: " +
+    #                       Fore.CYAN + el["continent"]+Style.RESET_ALL)
+    #                 print("Memo:" + Fore.RED +
+    #                       el["memo"]+"\n"+Style.RESET_ALL)
+    #                 string = str(el["country"]+"%"+el["capital"]+"%" +
+    #                              el["memo"]+"%"+el["continent"]+"%\n")
+    #                 with open("./secondRightList", 'a') as file:
+    #                     secondRightList.append(el)
+    #                     file.write(string)
+    #                 with open("./rightList", 'r') as rightfile:
+    #                     lines = rightfile.readlines()
+    #                 with open("./rightList", 'w') as rightFile:
+    #                     for line in lines:
+    #                         if line != string:
+    #                             rightFile.write(line)
+    #                 rightList.pop(question)
+    #                 continue
+    #             else:
+    #                 print("\nFalse, the answer is: "+Fore.GREEN,
+    #                       el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
+    #                 print("Memo: ", Fore.RED +
+    #                       el["memo"], "\n", Style.RESET_ALL)
+    #                 with open("./rightList", 'r') as rightfile:
+    #                     lines = rightfile.readlines()
+    #                 with open("./rightList", 'w') as rightFile:
+    #                     string = str(el["country"]+"%"+el["capital"]+"%" +
+    #                                  el["memo"]+"%"+el["continent"]+"%\n")
+    #                     for line in lines:
+    #                         if line != string:
+    #                             rightFile.write(line)
+    #                 rightList.pop(question)
+    #                 finalArray.append(el)
+    #                 continue
+    #         else:
+    #             question = random.randint(0, len(finalArray)-1)
+    #             el = finalArray[question]
+    #             print("Capitale de :", Fore.YELLOW +
+    #                   el["country"]+Style.RESET_ALL)
+    #             answer = input()
+    #             if(answer == el["capital"].strip()):
+    #                 counter = counter+1
+    #                 print("Right answer ! the continent is: " +
+    #                       Fore.CYAN + el["continent"]+Style.RESET_ALL)
+    #                 print("Memo:" + Fore.RED +
+    #                       el["memo"]+"\n"+Style.RESET_ALL)
+    #                 with open("./rightList", "a") as file:
+    #                     string = str(el["country"]+"%"+el["capital"]+"%" +
+    #                                  el["memo"]+"%"+el["continent"]+"%\n")
+    #                     rightList.append(el)
+    #                     file.write(string)
+    #                 finalArray.pop(question)
+    #                 continue
+    #             else:
+    #                 print("\nFalse, the answer is: "+Fore.GREEN,
+    #                       el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
+    #                 print("Memo: ", Fore.RED +
+    #                       el["memo"], "\n", Style.RESET_ALL)
+    #                 continue
+    #     else:
+    #         question = random.randint(0, len(finalArray)-1)
+    #         el = finalArray[question]
+    #         print("Capitale de :", Fore.YELLOW +
+    #               el["country"]+Style.RESET_ALL)
+    #         answer = input()
+    #         if(answer == el["capital"].strip()):
+    #             print(len(finalArray)+"/199")
+    #             counter = counter+1
+    #             print("Right answer ! the continent is: " +
+    #                   Fore.CYAN + el["continent"]+Style.RESET_ALL)
+    #             print("Memo:" + Fore.RED+el["memo"]+"\n"+Style.RESET_ALL)
+    #             finalArray.pop(question)
+    #             continue
+    #         else:
+    #             print("\nFalse, the answer is: "+Fore.GREEN,
+    #                   el["capital"], Style.RESET_ALL+"in: ", Fore.CYAN, el["continent"]+Style.RESET_ALL)
+    #             print("Memo: ", Fore.RED+el["memo"], "\n", Style.RESET_ALL)
+    #             continue
